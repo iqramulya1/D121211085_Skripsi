@@ -1,0 +1,1844 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gold Price Predictor - TFT Model</title>
+    <script src="https://cdn.plot.ly/plotly-2.34.0.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary: #0f766e;
+            --primary-dark: #0d5f56;
+            --secondary: #f59e0b;
+            --success: #10b981;
+            --danger: #ef4444;
+            --warning: #f59e0b;
+            --info: #3b82f6;
+            --dark: #1f2937;
+            --gray: #6b7280;
+            --light: #f3f4f6;
+            --white: #ffffff;
+            --border: #e5e7eb;
+            --shadow: rgba(0, 0, 0, 0.1);
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #0f766e 0%, #0d5f56 100%);
+            min-height: 100vh;
+            padding: 20px;
+            color: var(--dark);
+        }
+
+        .app-container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        /* Header */
+        .header {
+            background: var(--white);
+            border-radius: 16px;
+            padding: 30px;
+            margin-bottom: 24px;
+            box-shadow: 0 4px 20px var(--shadow);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 20px;
+        }
+
+        .header-left h1 {
+            font-size: 28px;
+            font-weight: 700;
+            color: var(--primary-dark);
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .header-left h1::before {
+            content: "🪙";
+            font-size: 32px;
+        }
+
+        .header-left p {
+            color: var(--gray);
+            font-size: 14px;
+        }
+
+        .header-stats {
+            display: flex;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+
+        .stat-badge {
+            background: var(--light);
+            padding: 12px 20px;
+            border-radius: 10px;
+            text-align: center;
+        }
+
+        .stat-badge .label {
+            font-size: 12px;
+            color: var(--gray);
+            font-weight: 500;
+        }
+
+        .stat-badge .value {
+            font-size: 18px;
+            font-weight: 700;
+            color: var(--primary);
+        }
+
+        /* Main Content */
+        .main-content {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 24px;
+        }
+
+        @media (max-width: 1024px) {
+            .main-content {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* Cards */
+        .card {
+            background: var(--white);
+            border-radius: 16px;
+            padding: 24px;
+            box-shadow: 0 4px 20px var(--shadow);
+            margin-bottom: 24px;
+        }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 16px;
+            border-bottom: 2px solid var(--light);
+        }
+
+        .card-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: var(--dark);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        /* Upload Section */
+        .upload-area {
+            border: 2px dashed var(--border);
+            border-radius: 12px;
+            padding: 40px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+            background: var(--light);
+        }
+
+        .upload-area:hover {
+            border-color: var(--primary);
+            background: rgba(15, 118, 110, 0.05);
+        }
+
+        .upload-area:focus-visible {
+            outline: 3px solid rgba(15, 118, 110, 0.35);
+            outline-offset: 3px;
+            border-color: var(--primary);
+        }
+
+        .upload-area.dragover {
+            border-color: var(--primary);
+            background: rgba(15, 118, 110, 0.1);
+        }
+
+        .upload-area.has-error {
+            border-color: var(--danger);
+            background: #fff7f7;
+        }
+
+        .upload-icon {
+            font-size: 48px;
+            margin-bottom: 16px;
+        }
+
+        .upload-text {
+            color: var(--gray);
+            font-size: 14px;
+        }
+
+        .upload-text strong {
+            color: var(--primary);
+        }
+
+        /* Form Elements */
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-label {
+            display: block;
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--dark);
+            margin-bottom: 8px;
+        }
+
+        .form-input {
+            width: 100%;
+            padding: 12px 16px;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            font-size: 14px;
+            transition: all 0.3s;
+            font-family: inherit;
+        }
+
+        .form-input:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(15, 118, 110, 0.1);
+        }
+
+        .form-row {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 16px;
+        }
+
+        .form-hint {
+            font-size: 12px;
+            color: var(--gray);
+            margin-top: 4px;
+        }
+
+        /* Buttons */
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-family: inherit;
+        }
+
+        .btn-primary {
+            background: var(--primary);
+            color: var(--white);
+        }
+
+        .btn-primary:hover {
+            background: var(--primary-dark);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(15, 118, 110, 0.3);
+        }
+
+        .btn-secondary {
+            background: var(--light);
+            color: var(--dark);
+        }
+
+        .btn-secondary:hover {
+            background: var(--border);
+        }
+
+        .btn-success {
+            background: var(--success);
+            color: var(--white);
+        }
+
+        .btn-success:hover {
+            background: #059669;
+        }
+
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none !important;
+        }
+
+        /* Tabs */
+        .tabs {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 24px;
+            background: var(--light);
+            padding: 6px;
+            border-radius: 12px;
+        }
+
+        .tab {
+            flex: 1;
+            padding: 12px 20px;
+            border: none;
+            background: transparent;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--gray);
+            cursor: pointer;
+            transition: all 0.3s;
+            font-family: inherit;
+        }
+
+        .tab:hover {
+            color: var(--primary);
+        }
+
+        .tab.active {
+            background: var(--white);
+            color: var(--primary);
+            box-shadow: 0 2px 8px var(--shadow);
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        /* Data Preview */
+        .data-preview {
+            max-height: 300px;
+            overflow-y: auto;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+        }
+
+        .preview-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 12px;
+        }
+
+        .preview-table th {
+            background: var(--light);
+            padding: 10px;
+            text-align: left;
+            font-weight: 600;
+            position: sticky;
+            top: 0;
+            border-bottom: 2px solid var(--border);
+        }
+
+        .preview-table td {
+            padding: 8px 10px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .preview-table tr:hover {
+            background: var(--light);
+        }
+
+        /* Chart */
+        .chart-container {
+            width: 100%;
+            height: 400px;
+        }
+
+        /* Results Table */
+        .results-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 16px;
+        }
+
+        .results-table th {
+            background: var(--primary);
+            color: var(--white);
+            padding: 14px;
+            text-align: center;
+            font-weight: 600;
+        }
+
+        .results-table td {
+            padding: 12px 14px;
+            text-align: center;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .results-table tr:nth-child(even) {
+            background: var(--light);
+        }
+
+        .price-cell {
+            font-weight: 700;
+            color: var(--primary);
+            font-size: 16px;
+        }
+
+        /* Status Messages */
+        .status {
+            padding: 16px 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .status-success {
+            background: #d1fae5;
+            color: #065f46;
+            border-left: 4px solid var(--success);
+        }
+
+        .status-error {
+            background: #fee2e2;
+            color: #991b1b;
+            border-left: 4px solid var(--danger);
+        }
+
+        .status-info {
+            background: #dbeafe;
+            color: #1e40af;
+            border-left: 4px solid var(--info);
+        }
+
+        .status-warning {
+            background: #fef3c7;
+            color: #92400e;
+            border-left: 4px solid var(--warning);
+        }
+
+        .inline-feedback {
+            display: none;
+            margin-top: 12px;
+            padding: 12px 14px;
+            border-radius: 8px;
+            font-size: 13px;
+            line-height: 1.5;
+        }
+
+        .inline-feedback.visible {
+            display: block;
+        }
+
+        .inline-feedback.error {
+            color: #991b1b;
+            background: #fee2e2;
+            border: 1px solid #fecaca;
+        }
+
+        .inline-feedback.success {
+            color: #065f46;
+            background: #d1fae5;
+            border: 1px solid #a7f3d0;
+        }
+
+        /* Loading */
+        .loading {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .loading-spinner {
+            width: 20px;
+            height: 20px;
+            border: 2px solid var(--border);
+            border-top-color: var(--primary);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* Model Badge */
+        .model-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .model-badge-tft {
+            background: #d1fae5;
+            color: #065f46;
+        }
+
+        .model-badge-fallback {
+            background: #fef3c7;
+            color: #92400e;
+        }
+
+        /* Full Width */
+        .full-width {
+            grid-column: 1 / -1;
+        }
+
+        /* Info Box */
+        .info-box {
+            background: linear-gradient(135deg, #e0f2fe 0%, #dbeafe 100%);
+            border: 1px solid #bfdbfe;
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 20px;
+        }
+
+        .info-box h4 {
+            color: #1e40af;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .info-box p {
+            color: #1e3a8a;
+            font-size: 13px;
+            line-height: 1.6;
+        }
+
+        /* File Input */
+        input[type="file"] {
+            display: none;
+        }
+
+        /* Quick Actions */
+        .quick-actions {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+
+        .scenario-button.selected {
+            color: var(--white);
+            background: var(--primary);
+            box-shadow: 0 0 0 3px rgba(15, 118, 110, 0.18);
+        }
+
+        /* Range Input */
+        input[type="range"] {
+            width: 100%;
+            height: 6px;
+            border-radius: 3px;
+            background: var(--light);
+            outline: none;
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+            appearance: none;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: var(--primary);
+            cursor: pointer;
+        }
+
+        /* Number Input Styling */
+        input[type="number"]::-webkit-inner-spin-button,
+        input[type="number"]::-webkit-outer-spin-button {
+            opacity: 1;
+        }
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <!-- Header -->
+        <div class="header">
+            <div class="header-left">
+                <h1>Gold Price Predictor</h1>
+                <p>Temporal Fusion Transformer (TFT) Model - 7 Day Forecast</p>
+            </div>
+            <div class="header-stats">
+                <div class="stat-badge">
+                    <div class="label">Model Status</div>
+                    <div class="value" id="modelStatus">Checking...</div>
+                </div>
+                <div class="stat-badge">
+                    <div class="label">Forecast Days</div>
+                    <div class="value">7 Days</div>
+                </div>
+                <div class="stat-badge">
+                    <div class="label">History Required</div>
+                    <div class="value">60 Days</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="main-content">
+            <!-- Left Column - Input -->
+            <div>
+                <div class="card">
+                    <div class="card-header">
+                        <h2 class="card-title">📊 Input Data</h2>
+                    </div>
+
+                    <div class="tabs">
+                        <button class="tab active" onclick="switchInputTab('upload')">📁 Upload CSV</button>
+                        <button class="tab" onclick="switchInputTab('manual')">✏️ Manual Input</button>
+                        <button class="tab" onclick="switchInputTab('dataset')">💾 Load Dataset</button>
+                        <button class="tab" onclick="switchInputTab('sample')">🎯 Sample Data</button>
+                        <button class="tab" onclick="switchInputTab('analysis')">📈 Model Analysis</button>
+                    </div>
+
+                    <!-- Upload Tab -->
+                    <div class="tab-content active" id="tab-upload">
+                        <div class="info-box">
+                            <h4>📋 Required CSV Format</h4>
+                            <p>Upload a CSV file with at least 60 rows of historical gold price data. Required columns: <strong>close, open, usd_close, usd_open, gspc_close, gspc_open, oil_dcoilwtico, fed_rate_pct, cpi_cpiaucsl</strong></p>
+                        </div>
+
+                        <div class="upload-area" id="uploadArea" role="button" tabindex="0" aria-controls="csvFile" aria-describedby="uploadFeedback">
+                            <div class="upload-icon">📄</div>
+                            <p class="upload-text"><strong>Click to upload</strong> or drag and drop</p>
+                            <p class="upload-text">CSV file with historical gold data</p>
+                            <input type="file" id="csvFile" accept=".csv">
+                        </div>
+
+                        <div id="uploadFeedback" class="inline-feedback" role="alert" aria-live="assertive"></div>
+
+                        <div id="fileInfo" style="margin-top: 16px; display: none;">
+                            <p style="color: var(--success); font-weight: 600;">✅ File loaded: <span id="fileName"></span></p>
+                            <p style="color: var(--gray); font-size: 13px;">Rows: <span id="fileRows">0</span></p>
+                        </div>
+
+                        <div class="data-preview" id="dataPreview" style="margin-top: 16px; display: none;">
+                            <table class="preview-table" id="previewTable"></table>
+                        </div>
+                    </div>
+
+                    <!-- Manual Input Tab -->
+                    <div class="tab-content" id="tab-manual">
+                        <div class="info-box">
+                            <h4>⚡ Quick Input</h4>
+                            <p>Enter the latest gold price and market indicators. The system will generate historical patterns based on your input.</p>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">💰 Current Gold Price (USD/oz)</label>
+                            <input type="number" class="form-input" id="goldPrice" value="2350" step="0.01">
+                        </div>
+
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label class="form-label">💵 USD Index</label>
+                                <input type="number" class="form-input" id="usdIndex" value="104" step="0.01">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">📈 S&P 500</label>
+                                <input type="number" class="form-input" id="sp500" value="5200" step="0.01">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">🛢️ Oil Price (WTI)</label>
+                                <input type="number" class="form-input" id="oilPrice" value="78" step="0.01">
+                            </div>
+                        </div>
+
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label class="form-label">🏦 Fed Rate (%)</label>
+                                <input type="number" class="form-input" id="fedRate" value="5.25" step="0.01">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">📊 CPI Index</label>
+                                <input type="number" class="form-input" id="cpiIndex" value="310" step="0.01">
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">📅 Market Trend</label>
+                            <select class="form-input" id="marketTrend">
+                                <option value="neutral">Neutral (Sideways)</option>
+                                <option value="uptrend">Uptrend (Bullish)</option>
+                                <option value="downtrend">Downtrend (Bearish)</option>
+                                <option value="volatile">Volatile</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Load Dataset Tab -->
+                    <div class="tab-content" id="tab-dataset">
+                        <div class="info-box">
+                            <h4>💾 Load from Training Dataset</h4>
+                            <p>Use <strong>Yahoo Finance API</strong> to fetch the latest real market history for the last 60 days. This is the live source used for model test data.</p>
+                        </div>
+
+                        <div class="quick-actions">
+                            <button class="btn btn-primary" onclick="loadFromDataset(event)">
+                                <span>📥 Load 60 Days from Dataset</span>
+                            </button>
+                            <button class="btn btn-secondary" onclick="loadRealMarketData(event)">
+                                <span>📡 Load Real Market Data</span>
+                            </button>
+                        </div>
+
+                        <div id="datasetInfo" class="status status-info" style="display: none;">
+                            <div>
+                                <span id="datasetDesc"></span>
+                            </div>
+                            <div style="margin-top: 8px; font-size: 13px; color: #1f2937; opacity: 0.85;" id="datasetSource"></div>
+                        </div>
+
+                        <div class="data-preview" id="datasetPreview" style="display: none;">
+                            <table class="preview-table" id="datasetPreviewTable"></table>
+                        </div>
+                    </div>
+
+                    <!-- Sample Data Tab -->
+                    <div class="tab-content" id="tab-sample">
+                        <div class="info-box">
+                            <h4>🎯 Real Market Scenarios</h4>
+                            <p><strong>Historical data from training dataset</strong> - This is local sample data, not the live Yahoo Finance API. Each scenario uses 60 days of real gold price history from the training set.</p>
+                        </div>
+
+                        <div class="quick-actions">
+                            <button type="button" class="btn btn-secondary scenario-button" data-scenario="bullish" aria-pressed="false" onclick="loadScenario('bullish')">📈 Bullish Market</button>
+                            <button type="button" class="btn btn-secondary scenario-button" data-scenario="bearish" aria-pressed="false" onclick="loadScenario('bearish')">📉 Bearish Market</button>
+                            <button type="button" class="btn btn-secondary scenario-button" data-scenario="sideways" aria-pressed="false" onclick="loadScenario('sideways')">➡️ Sideways</button>
+                            <button type="button" class="btn btn-secondary scenario-button" data-scenario="volatile" aria-pressed="false" onclick="loadScenario('volatile')">📊 Volatile</button>
+                        </div>
+
+                        <div id="scenarioInfo" class="status status-info" style="display: none;">
+                            <span id="scenarioDesc"></span>
+                            <div style="margin-top: 8px; font-size: 13px; color: #1f2937; opacity: 0.85;" id="scenarioSource"></div>
+                        </div>
+
+                        <div class="data-preview" id="scenarioPreview" style="display: none; margin-top: 16px;">
+                            <table class="preview-table" id="scenarioPreviewTable"></table>
+                        </div>
+                    </div>
+
+                    <!-- Model Analysis Tab -->
+                    <div class="tab-content" id="tab-analysis">
+                        <div class="info-box">
+                            <h4>📊 Model Performance Analysis</h4>
+                            <p>View the model architecture, configuration, and recent historical gold price data.</p>
+                        </div>
+
+                        <div class="quick-actions">
+                            <button class="btn btn-primary" onclick="loadModelInfo()">
+                                <span>📋 Model Info</span>
+                            </button>
+                            <button class="btn btn-secondary" onclick="loadHistoricalPerformance()">
+                                <span>📉 Historical Data</span>
+                            </button>
+                        </div>
+
+                        <!-- Model Info -->
+                        <div id="modelInfoResults" style="display: none;">
+                            <h3 style="margin: 20px 0 15px 0; font-size: 16px; font-weight: 600;">📋 Model Architecture & Configuration</h3>
+                            <div id="modelInfoContent"></div>
+                        </div>
+
+                        <!-- Historical Performance -->
+                        <div id="historicalResults" style="display: none;">
+                            <h3 style="margin: 20px 0 15px 0; font-size: 16px; font-weight: 600;">📉 Historical Performance (Last 30 Days)</h3>
+                            <div class="chart-container" id="historicalChart" style="height: 350px;"></div>
+                            <div id="historicalSummary" style="margin-top: 16px; padding: 16px; background: var(--light); border-radius: 8px;"></div>
+                        </div>
+                    </div>
+
+                    <!-- Future Variables -->
+                    <div class="form-group" style="margin-top: 24px; padding-top: 24px; border-top: 2px solid var(--light);">
+                        <label class="form-label">🔮 Future Market Assumptions (Next 7 Days)</label>
+                        <p class="form-hint">Expected values for external variables in the forecast period</p>
+
+                        <div class="form-row" style="margin-top: 12px;">
+                            <div class="form-group">
+                                <label class="form-label">USD Index</label>
+                                <input type="number" class="form-input" id="futureUsd" value="104" step="0.01">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">S&P 500</label>
+                                <input type="number" class="form-input" id="futureSp500" value="5200" step="0.01">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Oil Price</label>
+                                <input type="number" class="form-input" id="futureOil" value="78" step="0.01">
+                            </div>
+                        </div>
+                    </div>
+
+                    <button class="btn btn-primary" id="btnPredict" style="width: 100%; margin-top: 20px; font-size: 16px; padding: 16px;">
+                        <span>🔮 Generate 7-Day Forecast</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Right Column - Results -->
+            <div>
+                <div class="card" id="statusCard" style="display: none;">
+                    <div class="status" id="statusMessage" role="status" aria-live="polite"></div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header">
+                        <h2 class="card-title">📈 Forecast Chart</h2>
+                        <span class="model-badge" id="modelBadge" style="display: none;"></span>
+                    </div>
+                    <div class="chart-container" id="chart">
+                        <div style="display: flex; align-items: center; justify-content: center; height: 100%; color: var(--gray);">
+                            <p>Run a prediction to see the forecast chart</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header">
+                        <h2 class="card-title">📊 7-Day Price Forecast</h2>
+                        <button class="btn btn-secondary" onclick="downloadCSV()" style="padding: 8px 16px; font-size: 12px;">
+                            📥 Download CSV
+                        </button>
+                    </div>
+                    <table class="results-table" id="resultsTable">
+                        <thead>
+                            <tr>
+                                <th>Day</th>
+                                <th>Date</th>
+                                <th>Predicted Price (USD)</th>
+                                <th>Change</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td colspan="4" style="color: var(--gray);">No forecast yet</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="card">
+                    <div class="card-header">
+                        <h2 class="card-title">📋 Forecast Summary</h2>
+                    </div>
+                    <div id="forecastSummary" style="color: var(--gray); text-align: center; padding: 20px;">
+                        Run a prediction to see the summary
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Global state
+        let encoderData = [];
+        let apiFutureData = null;
+        let currentPredictions = [];
+        let currentMode = 'upload';
+        const REQUIRED_CSV_COLUMNS = [
+            'close', 'open', 'usd_close', 'usd_open', 'gspc_close',
+            'gspc_open', 'oil_dcoilwtico', 'fed_rate_pct', 'cpi_cpiaucsl'
+        ];
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', function() {
+            checkModelStatus();
+            setupEventListeners();
+            updateGenerateButtonState();
+        });
+
+        // Recompute whether the current input tab has enough valid data to
+        // generate a forecast, and enable/disable the Generate button
+        // accordingly (Rekomendasi #5: prevent submitting incomplete/invalid input).
+        function updateGenerateButtonState() {
+            const btn = document.getElementById('btnPredict');
+            let reason = null;
+
+            if (currentMode === 'manual') {
+                reason = validateManualInputs();
+            } else if (encoderData.length === 0) {
+                // Mirrors the historical-data check in runPrediction() for
+                // upload/dataset/sample/analysis tabs, which all fall back to
+                // using whatever encoderData has been loaded so far.
+                reason = 'Data historis minimal 60 hari dibutuhkan. Silakan upload CSV, klik Load Dataset, atau pilih Sample Data terlebih dahulu.';
+            }
+
+            btn.disabled = !!reason;
+            btn.title = reason || '';
+        }
+
+        // Check model status
+        async function checkModelStatus() {
+            try {
+                const response = await fetch('/status');
+                const data = await response.json();
+                const statusEl = document.getElementById('modelStatus');
+
+                if (data.models && data.models.length > 0) {
+                    statusEl.textContent = 'Ready';
+                    statusEl.style.color = 'var(--success)';
+                } else {
+                    statusEl.textContent = 'Not Loaded';
+                    statusEl.style.color = 'var(--danger)';
+                }
+            } catch (e) {
+                document.getElementById('modelStatus').textContent = 'Error';
+            }
+        }
+
+        // Setup event listeners
+        function setupEventListeners() {
+            // File upload
+            const uploadArea = document.getElementById('uploadArea');
+            const fileInput = document.getElementById('csvFile');
+
+            uploadArea.addEventListener('click', () => fileInput.click());
+            uploadArea.addEventListener('keydown', (event) => {
+                if (event.key === 'Enter' || event.key === ' ') {
+                    event.preventDefault();
+                    fileInput.click();
+                }
+            });
+
+            uploadArea.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                uploadArea.classList.add('dragover');
+            });
+
+            uploadArea.addEventListener('dragleave', () => {
+                uploadArea.classList.remove('dragover');
+            });
+
+            uploadArea.addEventListener('drop', (e) => {
+                e.preventDefault();
+                uploadArea.classList.remove('dragover');
+                const file = e.dataTransfer.files[0];
+                if (file) handleFileUpload(file);
+            });
+
+            fileInput.addEventListener('change', (e) => {
+                const file = e.target.files[0];
+                if (file) handleFileUpload(file);
+            });
+
+            // Predict button
+            document.getElementById('btnPredict').addEventListener('click', runPrediction);
+
+            // Re-validate manual input fields as the user types so the
+            // Generate button reflects current validity in real time.
+            ['goldPrice', 'usdIndex', 'sp500', 'oilPrice', 'fedRate', 'cpiIndex'].forEach(id => {
+                document.getElementById(id).addEventListener('input', updateGenerateButtonState);
+            });
+        }
+
+        // Switch input tabs
+        function switchInputTab(tab) {
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+
+            document.querySelector(`.tab[onclick="switchInputTab('${tab}')"]`).classList.add('active');
+            document.getElementById(`tab-${tab}`).classList.add('active');
+
+            currentMode = tab;
+            updateGenerateButtonState();
+        }
+
+        // Handle file upload
+        function handleFileUpload(file) {
+            // Never keep previously valid upload data after a rejected file.
+            currentMode = 'upload';
+            encoderData = [];
+            apiFutureData = null;
+            document.getElementById('fileInfo').style.display = 'none';
+            document.getElementById('dataPreview').style.display = 'none';
+            updateGenerateButtonState();
+
+            if (!file.name.toLowerCase().endsWith('.csv')) {
+                rejectUploadedFile('File harus berformat CSV (.csv).');
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const text = e.target.result;
+                const validationError = validateCSV(text);
+                if (validationError) {
+                    rejectUploadedFile(validationError);
+                    return;
+                }
+
+                const rows = parseCSV(text);
+
+                if (rows.length < 60) {
+                    rejectUploadedFile(`CSV harus memiliki minimal 60 baris data. Ditemukan: ${rows.length} baris.`);
+                    return;
+                }
+
+                // Show file info
+                document.getElementById('fileInfo').style.display = 'block';
+                document.getElementById('fileName').textContent = file.name;
+                document.getElementById('fileRows').textContent = rows.length;
+
+                // Show preview
+                showPreview(rows.slice(0, 10));
+
+                // Store data (take last 60 rows)
+                encoderData = rows.slice(-60);
+                updateGenerateButtonState();
+
+                setUploadFeedback('success', `File valid: ${rows.length} baris dan seluruh kolom wajib tersedia.`);
+                showStatus('success', `Loaded ${rows.length} rows from CSV. Using last 60 rows for prediction.`);
+            };
+            reader.onerror = function() {
+                rejectUploadedFile('File tidak dapat dibaca. Silakan pilih ulang file CSV.');
+            };
+            reader.readAsText(file);
+        }
+
+        function setUploadFeedback(type, message) {
+            const feedback = document.getElementById('uploadFeedback');
+            const uploadArea = document.getElementById('uploadArea');
+            feedback.className = `inline-feedback visible ${type}`;
+            feedback.textContent = message;
+            uploadArea.classList.toggle('has-error', type === 'error');
+        }
+
+        function rejectUploadedFile(message) {
+            setUploadFeedback('error', message);
+            showStatus('error', message);
+            document.getElementById('csvFile').value = '';
+            updateGenerateButtonState();
+        }
+
+        function validateCSV(text) {
+            const lines = text.split(/\r?\n/).filter(line => line.trim());
+            if (lines.length < 2) {
+                return 'CSV tidak valid: header dan data tidak ditemukan.';
+            }
+
+            const headers = lines[0].split(',').map(header => header.trim().toLowerCase());
+            const missingColumns = REQUIRED_CSV_COLUMNS.filter(column => !headers.includes(column));
+            if (missingColumns.length > 0) {
+                return `CSV tidak valid. Kolom wajib yang belum ada: ${missingColumns.join(', ')}.`;
+            }
+
+            for (let lineIndex = 1; lineIndex < lines.length; lineIndex++) {
+                const values = lines[lineIndex].split(',').map(value => value.trim());
+                for (const column of REQUIRED_CSV_COLUMNS) {
+                    const value = values[headers.indexOf(column)];
+                    if (value === undefined || value === '' || !Number.isFinite(Number(value))) {
+                        return `CSV tidak valid: nilai ${column} pada baris ${lineIndex + 1} harus berupa angka.`;
+                    }
+                }
+            }
+
+            return null;
+        }
+
+        // Parse CSV
+        function parseCSV(text) {
+            const lines = text.split('\n').filter(line => line.trim());
+            if (lines.length < 2) return [];
+
+            const headers = lines[0].split(',').map(h => h.trim().toLowerCase());
+            const rows = [];
+
+            for (let i = 1; i < lines.length; i++) {
+                const values = lines[i].split(',');
+                const row = {};
+
+                headers.forEach((header, idx) => {
+                    row[header] = values[idx] ? values[idx].trim() : '';
+                });
+
+                // Check required columns
+                if (row.close !== undefined && row.close !== '') {
+                    rows.push(row);
+                }
+            }
+
+            return rows;
+        }
+
+        // Show data preview
+        function showPreview(rows) {
+            const preview = document.getElementById('dataPreview');
+            const table = document.getElementById('previewTable');
+
+            if (rows.length === 0) {
+                preview.style.display = 'none';
+                return;
+            }
+
+            const headers = Object.keys(rows[0]);
+
+            let html = '<thead><tr>';
+            headers.forEach(h => {
+                html += `<th>${h}</th>`;
+            });
+            html += '</tr></thead><tbody>';
+
+            rows.forEach(row => {
+                html += '<tr>';
+                headers.forEach(h => {
+                    html += `<td>${row[h] || ''}</td>`;
+                });
+                html += '</tr>';
+            });
+            html += '</tbody>';
+
+            table.innerHTML = html;
+            preview.style.display = 'block';
+        }
+
+        // Load scenario - NOW USES REAL DATA FROM TRAINING DATASET
+        async function loadScenario(type) {
+            setScenarioLoading(type, true);
+            try {
+                showStatus('info', `Loading real ${type} scenario from training dataset...`);
+
+                const response = await fetch('/sample-scenarios');
+                const result = await response.json();
+
+                if (result.success && result.scenarios[type]) {
+                    const scenario = result.scenarios[type];
+
+                    if (!Array.isArray(scenario.data) || scenario.data.length < 60) {
+                        throw new Error('Scenario data contains fewer than 60 rows');
+                    }
+
+                    // Load the real data (60 days) into encoderData
+                    encoderData = scenario.data.slice(-60);
+                    apiFutureData = null;
+                    currentMode = 'sample';
+                    updateGenerateButtonState();
+                    markSelectedScenario(type);
+
+                    // Update UI with scenario info
+                    document.getElementById('scenarioInfo').style.display = 'block';
+                    document.getElementById('scenarioDesc').textContent = `${scenario.name}: ${scenario.description}`;
+                    document.getElementById('scenarioSource').textContent = `Sumber data: ${result.source || 'Training dataset'} · 60 baris siap digunakan`;
+
+                    // Show preview of first few rows
+                    showScenarioPreview(encoderData.slice(0, 10));
+
+                    showStatus('success', `Loaded ${type} scenario from real historical data! Click "Generate Forecast" to run prediction.`);
+                } else {
+                    // Fallback to old generated data if API fails
+                    loadScenarioGenerated(type);
+                }
+            } catch (e) {
+                console.error('Failed to load real scenario:', e);
+                // Fallback to generated data
+                loadScenarioGenerated(type);
+            } finally {
+                setScenarioLoading(type, false);
+            }
+        }
+
+        function setScenarioLoading(type, isLoading) {
+            document.querySelectorAll('.scenario-button').forEach(button => {
+                if (!button.dataset.originalHtml) {
+                    button.dataset.originalHtml = button.innerHTML;
+                }
+                button.disabled = isLoading;
+                if (button.dataset.scenario === type) {
+                    button.innerHTML = isLoading
+                        ? '<span class="loading"><span class="loading-spinner"></span>Loading...</span>'
+                        : button.dataset.originalHtml;
+                }
+            });
+        }
+
+        function markSelectedScenario(type) {
+            document.querySelectorAll('.scenario-button').forEach(button => {
+                const selected = button.dataset.scenario === type;
+                button.classList.toggle('selected', selected);
+                button.setAttribute('aria-pressed', selected ? 'true' : 'false');
+            });
+        }
+
+        // Fallback: Load scenario with generated data (original implementation)
+        function loadScenarioGenerated(type) {
+            const scenarios = {
+                bullish: { price: 2400, usd: 103, sp500: 5300, trend: 'uptrend', desc: 'Strong uptrend with rising stock markets and weakening USD - bullish for gold (simulated)' },
+                bearish: { price: 2100, usd: 106, sp500: 4800, trend: 'downtrend', desc: 'Downtrend scenario with strong USD and falling stocks - bearish for gold (simulated)' },
+                sideways: { price: 2350, usd: 104, sp500: 5200, trend: 'neutral', desc: 'Consolidation/sideways market - gold trading in range (simulated)' },
+                volatile: { price: 2350, usd: 104, sp500: 5200, trend: 'volatile', desc: 'High volatility scenario - expect larger price swings (simulated)' }
+            };
+
+            const s = scenarios[type];
+            const generatedData = generateSampleData();
+            document.getElementById('goldPrice').value = s.price;
+            document.getElementById('usdIndex').value = s.usd;
+            document.getElementById('sp500').value = s.sp500;
+            document.getElementById('marketTrend').value = s.trend;
+
+            // The fallback must be usable for prediction, not preview-only.
+            encoderData = generatedData;
+            apiFutureData = null;
+            currentMode = 'sample';
+            updateGenerateButtonState();
+            markSelectedScenario(type);
+
+            document.getElementById('scenarioInfo').style.display = 'block';
+            document.getElementById('scenarioDesc').textContent = `${type.charAt(0).toUpperCase() + type.slice(1)} Market: ${s.desc}`;
+            document.getElementById('scenarioSource').textContent = 'Sumber data: Simulasi generated scenario · 60 baris siap digunakan';
+            showScenarioPreview(generatedData.slice(0, 10));
+
+            showStatus('success', `Loaded ${type} scenario (simulated). Generate Forecast is now ready.`);
+        }
+
+        // Load from training dataset
+        async function loadRealMarketData(event) {
+            const btn = event.currentTarget || event.target;
+            const originalText = btn.innerHTML;
+            btn.innerHTML = '<span class="loading"><div class="loading-spinner"></div>Loading...</span>';
+            btn.disabled = true;
+
+            try {
+                showStatus('info', 'Fetching real market data from Yahoo Finance...');
+                const response = await fetch('/api/market-data');
+                const result = await response.json();
+
+                if (result.success && result.payload) {
+                    encoderData = result.payload.encoder_last_60;
+                    apiFutureData = result.payload.future_7;
+                    currentMode = 'dataset';
+                    updateGenerateButtonState();
+
+                    document.getElementById('datasetInfo').style.display = 'block';
+                    document.getElementById('datasetDesc').textContent = `✅ Loaded ${encoderData.length} rows from Yahoo Finance API.`;
+                    document.getElementById('datasetSource').textContent = `Sumber data: ${result.payload.source}`;
+                    showDatasetPreview(encoderData.slice(0, 10));
+                    showStatus('success', 'Real market data loaded! The forecast will now use live market history from Yahoo Finance.');
+
+                    // Pre-fill future assumptions from API if available
+                    if (apiFutureData && apiFutureData.length === 7) {
+                        const futureRow = apiFutureData[0];
+                        document.getElementById('futureUsd').value = parseFloat(futureRow.usd_close).toFixed(2);
+                        document.getElementById('futureSp500').value = parseFloat(futureRow.gspc_close).toFixed(2);
+                        document.getElementById('futureOil').value = parseFloat(futureRow.oil_dcoilwtico).toFixed(2);
+                    }
+                } else {
+                    showStatus('error', 'Failed to load real market data. ' + (result.error || 'No payload returned.'));
+                }
+            } catch (e) {
+                showStatus('error', 'Error fetching market data: ' + e.message);
+            }
+
+            btn.innerHTML = originalText;
+            btn.disabled = false;
+        }
+
+        async function loadFromDataset(event) {
+            const btn = event.currentTarget || event.target;
+            const originalText = btn.innerHTML;
+            btn.innerHTML = '<span class="loading"><div class="loading-spinner"></div>Loading...</span>';
+            btn.disabled = true;
+
+            try {
+                const response = await fetch('/load-dataset');
+                const result = await response.json();
+
+                if (result.success && result.data) {
+                    encoderData = result.data;
+                    apiFutureData = null;
+                    currentMode = 'dataset';
+                    updateGenerateButtonState();
+
+                    // Show success
+                    document.getElementById('datasetInfo').style.display = 'block';
+                    document.getElementById('datasetDesc').textContent = `✅ Loaded ${result.data.length} rows from training dataset (last 60 days). Date range: ${result.date_range}`;
+                    document.getElementById('datasetSource').textContent = 'Sumber data: Local training dataset';
+
+                    // Show preview
+                    showDatasetPreview(result.data.slice(0, 10));
+
+                    showStatus('success', `Loaded ${result.data.length} rows from training dataset! Click "Generate Forecast" to run prediction.`);
+                } else {
+                    showStatus('error', 'Failed to load dataset: ' + (result.error || 'Unknown error'));
+                }
+            } catch (e) {
+                showStatus('error', 'Error loading dataset: ' + e.message);
+            }
+
+            btn.innerHTML = originalText;
+            btn.disabled = false;
+        }
+
+        // Show preview table in a named container
+        function showPreviewTable(containerId, tableId, data) {
+            const preview = document.getElementById(containerId);
+            const table = document.getElementById(tableId);
+
+            if (!preview || !table) {
+                return;
+            }
+
+            if (!data || data.length === 0) {
+                preview.style.display = 'none';
+                return;
+            }
+
+            const headers = Object.keys(data[0]);
+
+            let html = '<thead><tr>';
+            headers.forEach(h => {
+                html += `<th>${h}</th>`;
+            });
+            html += '</tr></thead><tbody>';
+
+            data.forEach(row => {
+                html += '<tr>';
+                headers.forEach(h => {
+                    const val = row[h];
+                    const displayVal = typeof val === 'number' ? val.toFixed(2) : (val || '-');
+                    html += `<td>${displayVal}</td>`;
+                });
+                html += '</tr>';
+            });
+            html += '</tbody>';
+
+            table.innerHTML = html;
+            preview.style.display = 'block';
+        }
+
+        function showDatasetPreview(data) {
+            showPreviewTable('datasetPreview', 'datasetPreviewTable', data);
+        }
+
+        function showScenarioPreview(data) {
+            showPreviewTable('scenarioPreview', 'scenarioPreviewTable', data);
+        }
+
+        // Generate encoder data from manual input
+        function generateEncoderData() {
+            const goldPrice = parseFloat(document.getElementById('goldPrice').value) || 2350;
+            const usdIndex = parseFloat(document.getElementById('usdIndex').value) || 104;
+            const sp500 = parseFloat(document.getElementById('sp500').value) || 5200;
+            const oilPrice = parseFloat(document.getElementById('oilPrice').value) || 78;
+            const fedRate = parseFloat(document.getElementById('fedRate').value) || 5.25;
+            const cpiIndex = parseFloat(document.getElementById('cpiIndex').value) || 310;
+            const trend = document.getElementById('marketTrend').value;
+
+            const data = [];
+            let price = goldPrice;
+
+            // Generate 60 days of historical data based on trend
+            for (let i = 60; i >= 1; i--) {
+                let change = 0;
+
+                switch(trend) {
+                    case 'uptrend':
+                        change = (Math.random() - 0.3) * goldPrice * 0.015;
+                        break;
+                    case 'downtrend':
+                        change = (Math.random() - 0.7) * goldPrice * 0.015;
+                        break;
+                    case 'volatile':
+                        change = (Math.random() - 0.5) * goldPrice * 0.03;
+                        break;
+                    default:
+                        change = (Math.random() - 0.5) * goldPrice * 0.008;
+                }
+
+                price = price - change;
+                const open = price + (Math.random() - 0.5) * 10;
+
+                data.push({
+                    close: price.toFixed(2),
+                    open: open.toFixed(2),
+                    tickvol: Math.floor(50000 + Math.random() * 20000),
+                    usd_close: usdIndex + (Math.random() - 0.5) * 2,
+                    usd_open: usdIndex + (Math.random() - 0.5) * 2,
+                    gspc_close: sp500 + (Math.random() - 0.5) * 50,
+                    gspc_open: sp500 + (Math.random() - 0.5) * 50,
+                    oil_dcoilwtico: oilPrice + (Math.random() - 0.5) * 5,
+                    fed_rate_pct: fedRate / 100,
+                    cpi_cpiaucsl: cpiIndex + (Math.random() - 0.5) * 2
+                });
+            }
+
+            return data;
+        }
+
+        // Generate sample data
+        function generateSampleData() {
+            const data = [];
+            let price = 2350;
+
+            for (let i = 1; i <= 60; i++) {
+                const change = (Math.random() - 0.5) * 20;
+                price = price + change;
+
+                data.push({
+                    close: price.toFixed(2),
+                    open: (price + (Math.random() - 0.5) * 5).toFixed(2),
+                    tickvol: Math.floor(50000 + Math.random() * 20000),
+                    usd_close: (104 + (Math.random() - 0.5) * 2).toFixed(2),
+                    usd_open: (104 + (Math.random() - 0.5) * 2).toFixed(2),
+                    gspc_close: (5200 + (Math.random() - 0.5) * 50).toFixed(2),
+                    gspc_open: (5200 + (Math.random() - 0.5) * 50).toFixed(2),
+                    oil_dcoilwtico: (78 + (Math.random() - 0.5) * 5).toFixed(2),
+                    fed_rate_pct: 0.0525,
+                    cpi_cpiaucsl: 310
+                });
+            }
+
+            return data;
+        }
+
+        // Validate the Manual Input tab's fields before generating a forecast.
+        // Returns an error message string if invalid, or null if all fields are OK.
+        function validateManualInputs() {
+            const fields = [
+                { id: 'goldPrice', label: 'Current Gold Price', min: 0.01 },
+                { id: 'usdIndex', label: 'USD Index', min: 0.01 },
+                { id: 'sp500', label: 'S&P 500', min: 0.01 },
+                { id: 'oilPrice', label: 'Oil Price (WTI)', min: 0.01 },
+                { id: 'fedRate', label: 'Fed Rate (%)', min: 0 },
+                { id: 'cpiIndex', label: 'CPI Index', min: 0.01 }
+            ];
+
+            for (const field of fields) {
+                const raw = document.getElementById(field.id).value.trim();
+                if (raw === '') {
+                    return `${field.label} wajib diisi.`;
+                }
+                const value = parseFloat(raw);
+                if (Number.isNaN(value)) {
+                    return `${field.label} harus berupa angka.`;
+                }
+                if (value < field.min) {
+                    return `${field.label} tidak boleh bernilai negatif.`;
+                }
+            }
+            return null;
+        }
+
+        // Run prediction
+        async function runPrediction() {
+            const btn = document.getElementById('btnPredict');
+            btn.disabled = true;
+            btn.innerHTML = '<span class="loading"><div class="loading-spinner"></div>Processing...</span>';
+
+            showStatus('info', 'Preparing data and running TFT model prediction...');
+
+            try {
+                // Get encoder data based on mode or loaded dataset
+                let encoder;
+                if (currentMode === 'upload') {
+                    if (encoderData.length === 0) {
+                        showStatus('error', 'Please upload a CSV file first');
+                        btn.disabled = false;
+                        btn.innerHTML = '<span>🔮 Generate 7-Day Forecast</span>';
+                        return;
+                    }
+                    encoder = encoderData;
+                } else if (currentMode === 'manual') {
+                    const validationError = validateManualInputs();
+                    if (validationError) {
+                        showStatus('error', validationError);
+                        btn.disabled = false;
+                        btn.innerHTML = '<span>🔮 Generate 7-Day Forecast</span>';
+                        return;
+                    }
+                    encoder = generateEncoderData();
+                } else if (encoderData.length > 0) {
+                    encoder = encoderData;
+                } else {
+                    showStatus('error', 'Data historis minimal 60 hari dibutuhkan. Silakan upload CSV, klik Load Dataset, atau pilih Sample Data terlebih dahulu.');
+                    btn.disabled = false;
+                    btn.innerHTML = '<span>🔮 Generate 7-Day Forecast</span>';
+                    return;
+                }
+
+                // Determine future horizon values
+                let future;
+                if (apiFutureData && apiFutureData.length === 7) {
+                    future = apiFutureData;
+                } else {
+                    const futureUsd = parseFloat(document.getElementById('futureUsd').value) || 104;
+                    const futureSp500 = parseFloat(document.getElementById('futureSp500').value) || 5200;
+                    const futureOil = parseFloat(document.getElementById('futureOil').value) || 78;
+                    const fedRateFuture = parseFloat(document.getElementById('fedRate').value) / 100 || 0.0525;
+                    const cpiFuture = parseFloat(document.getElementById('cpiIndex').value) || 310;
+
+                    future = [];
+                    for (let i = 0; i < 7; i++) {
+                        future.push({
+                            usd_close: futureUsd.toFixed(2),
+                            usd_open: futureUsd.toFixed(2),
+                            gspc_close: futureSp500.toFixed(2),
+                            gspc_open: futureSp500.toFixed(2),
+                            oil_dcoilwtico: futureOil.toFixed(2),
+                            fed_rate_pct: fedRateFuture,
+                            cpi_cpiaucsl: cpiFuture
+                        });
+                    }
+                }
+
+                // Call API
+                const response = await fetch('/predict', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        version: 'version_0',
+                        encoder_last_60: encoder,
+                        future_7: future
+                    })
+                });
+
+                const result = await response.json();
+
+                if (result.predictions) {
+                    currentPredictions = result.predictions;
+
+                    // Determine mode
+                    const mode = result.mode || 'unknown';
+                    let modeText, modeClass;
+
+                    if (mode === 'TFT-model') {
+                        modeText = '✅ TFT Model';
+                        modeClass = 'model-badge-tft';
+                        showStatus('success', 'Prediction completed successfully using TFT Model!');
+                    } else {
+                        modeText = '⚠️ Fallback Mode';
+                        modeClass = 'model-badge-fallback';
+                        showStatus('warning', 'Prediction completed using Fallback Mode (TFT model not available)');
+                    }
+
+                    // Show model badge
+                    const badge = document.getElementById('modelBadge');
+                    badge.textContent = modeText;
+                    badge.className = `model-badge ${modeClass}`;
+                    badge.style.display = 'inline-flex';
+
+                    // Render results
+                    renderChart(result.predictions);
+                    renderTable(result.predictions);
+                    renderSummary(result.predictions);
+                } else {
+                    showStatus('error', 'Prediction failed: ' + (result.error || 'Unknown error'));
+                }
+
+            } catch (e) {
+                showStatus('error', 'Error: ' + e.message);
+            }
+
+            btn.disabled = false;
+            btn.innerHTML = '<span>🔮 Generate 7-Day Forecast</span>';
+        }
+
+        // Render chart
+        function renderChart(predictions) {
+            const days = predictions.map((_, i) => `Day ${i + 1}`);
+            const prices = predictions.map(p => p.prediction);
+
+            const trace = {
+                x: days,
+                y: prices,
+                type: 'scatter',
+                mode: 'lines+markers',
+                line: { color: '#0f766e', width: 3 },
+                marker: { size: 10, color: '#0f766e' },
+                fill: 'tozeroy',
+                fillcolor: 'rgba(15, 118, 110, 0.1)'
+            };
+
+            const layout = {
+                title: {
+                    text: '7-Day Gold Price Forecast',
+                    font: { size: 18, color: '#1f2937' }
+                },
+                xaxis: {
+                    title: 'Forecast Day',
+                    gridcolor: '#e5e7eb'
+                },
+                yaxis: {
+                    title: 'Price (USD)',
+                    gridcolor: '#e5e7eb',
+                    tickformat: '$,.2f'
+                },
+                plot_bgcolor: '#f9fafb',
+                paper_bgcolor: 'white',
+                hovermode: 'x unified',
+                margin: { t: 60, r: 20, b: 60, l: 60 }
+            };
+
+            Plotly.newPlot('chart', [trace], layout, { responsive: true });
+        }
+
+        // Render results table
+        function renderTable(predictions) {
+            const tbody = document.querySelector('#resultsTable tbody');
+            const startDate = new Date();
+
+            let html = '';
+            predictions.forEach((p, i) => {
+                const date = new Date(startDate);
+                date.setDate(date.getDate() + i + 1);
+
+                const price = parseFloat(p.prediction);
+                const prevPrice = i > 0 ? parseFloat(predictions[i-1].prediction) : price;
+                const change = price - prevPrice;
+                const changePercent = (change / prevPrice) * 100;
+                const changeClass = change >= 0 ? 'color: var(--success);' : 'color: var(--danger);';
+                const changeIcon = change >= 0 ? '↑' : '↓';
+
+                html += `
+                    <tr>
+                        <td><strong>Day ${i + 1}</strong></td>
+                        <td>${date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}</td>
+                        <td class="price-cell">$${price.toFixed(2)}</td>
+                        <td style="${changeClass}">${changeIcon} $${Math.abs(change).toFixed(2)} (${changePercent.toFixed(2)}%)</td>
+                    </tr>
+                `;
+            });
+
+            tbody.innerHTML = html;
+        }
+
+        // Render summary
+        function renderSummary(predictions) {
+            const prices = predictions.map(p => parseFloat(p.prediction));
+            const min = Math.min(...prices);
+            const max = Math.max(...prices);
+            const avg = prices.reduce((a, b) => a + b, 0) / prices.length;
+            const firstPrice = prices[0];
+            const lastPrice = prices[prices.length - 1];
+            totalChange = lastPrice - firstPrice;
+            totalChangePercent = (totalChange / firstPrice) * 100;
+
+            const changeClass = totalChange >= 0 ? 'color: var(--success);' : 'color: var(--danger);';
+            const changeIcon = totalChange >= 0 ? '↑' : '↓';
+
+            document.getElementById('forecastSummary').innerHTML = `
+                <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; text-align: left;">
+                    <div style="padding: 16px; background: var(--light); border-radius: 8px;">
+                        <div style="font-size: 12px; color: var(--gray);">Starting Price</div>
+                        <div style="font-size: 20px; font-weight: 700; color: var(--primary);">$${firstPrice.toFixed(2)}</div>
+                    </div>
+                    <div style="padding: 16px; background: var(--light); border-radius: 8px;">
+                        <div style="font-size: 12px; color: var(--gray);">Ending Price</div>
+                        <div style="font-size: 20px; font-weight: 700; color: var(--primary);">$${lastPrice.toFixed(2)}</div>
+                    </div>
+                    <div style="padding: 16px; background: var(--light); border-radius: 8px;">
+                        <div style="font-size: 12px; color: var(--gray);">7-Day Change</div>
+                        <div style="font-size: 20px; font-weight: 700; ${changeClass}">${changeIcon} $${Math.abs(totalChange).toFixed(2)} (${totalChangePercent.toFixed(2)}%)</div>
+                    </div>
+                    <div style="padding: 16px; background: var(--light); border-radius: 8px;">
+                        <div style="font-size: 12px; color: var(--gray);">Price Range</div>
+                        <div style="font-size: 16px; font-weight: 600; color: var(--dark);">$${min.toFixed(2)} - $${max.toFixed(2)}</div>
+                    </div>
+                </div>
+            `;
+        }
+
+        // Show status
+        function showStatus(type, message) {
+            const card = document.getElementById('statusCard');
+            const status = document.getElementById('statusMessage');
+
+            card.style.display = 'block';
+            status.className = 'status status-' + type;
+            status.textContent = message;
+
+            if (type === 'success') {
+                status.innerHTML = '<span style="font-size: 18px;">✅</span> ' + message;
+            } else if (type === 'error') {
+                status.innerHTML = '<span style="font-size: 18px;">❌</span> ' + message;
+            } else if (type === 'info') {
+                status.innerHTML = '<span style="font-size: 18px;">ℹ️</span> ' + message;
+            } else if (type === 'warning') {
+                status.innerHTML = '<span style="font-size: 18px;">⚠️</span> ' + message;
+            }
+        }
+
+        // Download CSV
+        function downloadCSV() {
+            if (currentPredictions.length === 0) {
+                showStatus('error', 'No predictions to download');
+                return;
+            }
+
+            const startDate = new Date();
+            let csv = 'Day,Date,Predicted Price (USD), Change (%)\n';
+
+            currentPredictions.forEach((p, i) => {
+                const date = new Date(startDate);
+                date.setDate(date.getDate() + i + 1);
+
+                const price = parseFloat(p.prediction);
+                const prevPrice = i > 0 ? parseFloat(currentPredictions[i-1].prediction) : price;
+                const changePercent = ((price - prevPrice) / prevPrice) * 100;
+
+                csv += `${i+1},${date.toISOString().split('T')[0]},${price.toFixed(2)},${changePercent.toFixed(2)}\n`;
+            });
+
+            const blob = new Blob([csv], { type: 'text/csv' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `gold_forecast_${new Date().toISOString().split('T')[0]}.csv`;
+            a.click();
+
+            showStatus('success', 'CSV downloaded successfully!');
+        }
+
+        async function loadModelInfo() {
+            showStatus('info', 'Loading model information...');
+
+            try {
+                const response = await fetch('/model-info?version=version_0');
+                const result = await response.json();
+
+                if (result.success) {
+                    // Show model info
+                    document.getElementById('modelInfoResults').style.display = 'block';
+                    document.getElementById('historicalResults').style.display = 'none';
+
+                    const m = result.model;
+                    let html = `
+                        <div style="background: var(--light); padding: 16px; border-radius: 8px; margin-bottom: 16px;">
+                            <div style="font-size: 12px; color: var(--gray);">Model Type</div>
+                            <div style="font-size: 18px; font-weight: 600; color: var(--primary);">${m.model_type}</div>
+                            <div style="font-size: 12px; color: var(--gray); margin-top: 8px;">Version: ${m.version} | Checkpoint: ${m.checkpoint}</div>
+                        </div>
+
+                        <h4 style="font-size: 14px; margin-bottom: 10px;">Architecture Hyperparameters</h4>
+                        <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-bottom: 16px;">
+                            <div style="padding: 12px; background: var(--light); border-radius: 6px;">
+                                <div style="font-size: 11px; color: var(--gray);">Encoder Length</div>
+                                <div style="font-size: 16px; font-weight: 600;">${m.architecture.encoder_length}</div>
+                            </div>
+                            <div style="padding: 12px; background: var(--light); border-radius: 6px;">
+                                <div style="font-size: 11px; color: var(--gray);">Decoder Length</div>
+                                <div style="font-size: 16px; font-weight: 600;">${m.architecture.decoder_length}</div>
+                            </div>
+                            <div style="padding: 12px; background: var(--light); border-radius: 6px;">
+                                <div style="font-size: 11px; color: var(--gray);">Hidden Size</div>
+                                <div style="font-size: 16px; font-weight: 600;">${m.architecture.hidden_size}</div>
+                            </div>
+                            <div style="padding: 12px; background: var(--light); border-radius: 6px;">
+                                <div style="font-size: 11px; color: var(--gray);">Attention Heads</div>
+                                <div style="font-size: 16px; font-weight: 600;">${m.architecture.attention_head_size}</div>
+                            </div>
+                            <div style="padding: 12px; background: var(--light); border-radius: 6px;">
+                                <div style="font-size: 11px; color: var(--gray);">Dropout</div>
+                                <div style="font-size: 16px; font-weight: 600;">${m.architecture.dropout}</div>
+                            </div>
+                            <div style="padding: 12px; background: var(--light); border-radius: 6px;">
+                                <div style="font-size: 11px; color: var(--gray);">Loss Function</div>
+                                <div style="font-size: 16px; font-weight: 600;">${m.architecture.loss}</div>
+                            </div>
+                        </div>
+
+                        <h4 style="font-size: 14px; margin-bottom: 10px;">Input Features</h4>
+                        <div style="padding: 12px; background: var(--light); border-radius: 6px;">
+                            <div style="font-size: 11px; color: var(--gray);">Target: <strong>${m.features.target}</strong></div>
+                            <div style="font-size: 11px; color: var(--gray); margin-top: 4px;">Group IDs: ${m.features.group_ids.join(', ')}</div>
+                            <div style="font-size: 11px; color: var(--gray); margin-top: 4px;">Categorical Features: ${m.features.static_categoricals.join(', ')}</div>
+                            <div style="font-size: 11px; color: var(--gray); margin-top: 4px;">Known Reals: ${m.features.time_varying_known_reals.slice(0, 5).join(', ')}...</div>
+                        </div>
+                    `;
+
+                    document.getElementById('modelInfoContent').innerHTML = html;
+                    showStatus('success', 'Model information loaded!');
+                } else {
+                    showStatus('error', 'Failed to load model info: ' + (result.error || 'Unknown error'));
+                }
+            } catch (e) {
+                showStatus('error', 'Error: ' + e.message);
+            }
+        }
+
+        async function loadHistoricalPerformance() {
+            showStatus('info', 'Loading historical performance data...');
+
+            try {
+                const response = await fetch('/historical-performance?version=version_0&days=30');
+                const result = await response.json();
+
+                if (result.success) {
+                    // Show historical results
+                    document.getElementById('modelInfoResults').style.display = 'none';
+                    document.getElementById('historicalResults').style.display = 'block';
+
+                    // Render chart
+                    const data = result.data;
+                    const x = data.map((_, i) => i + 1);
+                    const y = data.map(d => d.close);
+
+                    const trace = {
+                        x: x,
+                        y: y,
+                        type: 'scatter',
+                        mode: 'lines+markers',
+                        name: 'Gold Price',
+                        line: { color: '#0f766e', width: 2 },
+                        marker: { size: 6 },
+                        fill: 'tozeroy',
+                        fillcolor: 'rgba(15, 118, 110, 0.1)'
+                    };
+
+                    const layout = {
+                        title: {
+                            text: 'Historical Gold Price (Last 30 Days)',
+                            font: { size: 14 }
+                        },
+                        xaxis: { title: 'Day' },
+                        yaxis: { title: 'Price (USD)', tickformat: '$,.2f' },
+                        hovermode: 'x unified',
+                        margin: { t: 50, r: 20, b: 50, l: 60 }
+                    };
+
+                    Plotly.newPlot('historicalChart', [trace], layout, { responsive: true });
+
+                    // Update summary
+                    const s = result.summary;
+                    document.getElementById('historicalSummary').innerHTML = `
+                        <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; text-align: center;">
+                            <div>
+                                <div style="font-size: 11px; color: var(--gray);">Average</div>
+                                <div style="font-size: 16px; font-weight: 600; color: var(--primary);">$${s.avg_close}</div>
+                            </div>
+                            <div>
+                                <div style="font-size: 11px; color: var(--gray);">Min</div>
+                                <div style="font-size: 16px; font-weight: 600; color: var(--danger);">$${s.min_close}</div>
+                            </div>
+                            <div>
+                                <div style="font-size: 11px; color: var(--gray);">Max</div>
+                                <div style="font-size: 16px; font-weight: 600; color: var(--success);">$${s.max_close}</div>
+                            </div>
+                            <div>
+                                <div style="font-size: 11px; color: var(--gray);">Volatility (Std)</div>
+                                <div style="font-size: 16px; font-weight: 600; color: var(--dark);">$${s.volatility}</div>
+                            </div>
+                        </div>
+                    `;
+
+                    showStatus('success', `Loaded ${data.length} days of historical data!`);
+                } else {
+                    showStatus('error', 'Failed to load historical data: ' + (result.error || 'Unknown error'));
+                }
+            } catch (e) {
+                showStatus('error', 'Error: ' + e.message);
+            }
+        }
+    </script>
+</body>
+</html>
